@@ -10,8 +10,8 @@ var Colors = {
   blue: 0x68c3c0,
   plane_body: 0x2f4f4f,
   windShield_color: 0x008080,
-  sea:0xde7130
-}
+  sea: 0xde7130,
+};
 
 ///////////////
 
@@ -490,6 +490,8 @@ var AirPlane = function () {
 Sky = function () {
   this.mesh = new THREE.Object3D();
   this.nClouds = 20;
+  this.nStars = 70;
+  this.stars = [];
   this.clouds = [];
   var stepAngle = (Math.PI * 2) / this.nClouds;
   for (var i = 0; i < this.nClouds; i++) {
@@ -505,6 +507,27 @@ Sky = function () {
     c.mesh.scale.set(s, s, s);
     this.mesh.add(c.mesh);
   }
+  for (var i = 0; i < this.nStars; i++) {
+    var c = new Star();
+    this.stars.push(c);
+    var a = stepAngle * i;
+    var h = game.seaRadius + 200 + Math.random() * 200;
+    c.mesh.position.y = Math.sin(a) * h;
+    c.mesh.position.x = Math.cos(a) * h;
+    c.mesh.position.z = -100 - Math.random() * 500;
+    c.mesh.rotation.z = a + Math.PI / 2;
+    var s = 1 + Math.random() * 2;
+    c.mesh.scale.set(s, s, s);
+    this.mesh.add(c.mesh);
+  }
+};
+
+Sky.prototype.moveStars = function () {
+  for (var i = 0; i < this.nStars; i++) {
+    var c = this.stars[i];
+    c.rotate();
+  }
+  this.mesh.rotation.z += game.speed * deltaTime;
 };
 
 Sky.prototype.moveClouds = function () {
@@ -546,11 +569,10 @@ Sea = function () {
     });
   }
   var mat = new THREE.MeshPhongMaterial({
-    color:Colors.sea,
-    transparent:true,
-    opacity:.8,
-    shading:THREE.FlatShading,
-
+    color: Colors.sea,
+    transparent: true,
+    opacity: 0.8,
+    shading: THREE.FlatShading,
   });
 
   this.mesh = new THREE.Mesh(geom, mat);
@@ -570,11 +592,34 @@ Sea.prototype.moveWaves = function () {
     this.mesh.geometry.verticesNeedUpdate = true;
   }
 };
+Star = function () {
+  this.mesh = new THREE.Object3D();
+  this.mesh.name = "star";
+  var geom = new THREE.SphereGeometry(2);
+  var mat = new THREE.MeshPhongMaterial({
+    color: "#FFE81F",
+  });
 
+  var nBlocs = 3 + Math.floor(Math.random() * 3);
+  for (var i = 0; i < nBlocs; i++) {
+    var m = new THREE.Mesh(geom.clone(), mat);
+    m.position.x = i * 15;
+    m.position.y = Math.random() * 10;
+    m.position.z = Math.random() * 10;
+    m.rotation.z = Math.random() * Math.PI * 2;
+    m.rotation.y = Math.random() * Math.PI * 2;
+    var s = 0.1 + Math.random() * 0.9;
+    m.scale.set(s, s, s);
+    this.mesh.add(m);
+    m.castShadow = true;
+    m.receiveShadow = true;
+  }
+  //*/
+};
 Cloud = function () {
   this.mesh = new THREE.Object3D();
   this.mesh.name = "cloud";
-  var geom = new THREE.CubeGeometry(20, 20, 20);
+  var geom = new THREE.SphereGeometry(20, 8, 6);
   var mat = new THREE.MeshPhongMaterial({
     color: Colors.white,
   });
@@ -596,6 +641,14 @@ Cloud = function () {
   }
   //*/
 };
+Star.prototype.rotate = function () {
+  var l = this.mesh.children.length;
+  for (var i = 0; i < l; i++) {
+    var m = this.mesh.children[i];
+    m.rotation.z += Math.random() * 0.005 * (i + 1);
+    m.rotation.y += Math.random() * 0.002 * (i + 1);
+  }
+};
 
 Cloud.prototype.rotate = function () {
   var l = this.mesh.children.length;
@@ -609,7 +662,7 @@ Cloud.prototype.rotate = function () {
 Ennemy = function () {
   var geom = new THREE.TetrahedronGeometry(8, 2);
   var mat = new THREE.MeshPhongMaterial({
-    color: Colors.red,
+    color: "#505050",
     shininess: 0,
     specular: 0xffffff,
     shading: THREE.FlatShading,
@@ -672,7 +725,7 @@ EnnemiesHolder.prototype.rotateEnnemies = function () {
       particlesHolder.spawnParticles(
         ennemy.mesh.position.clone(),
         15,
-        Colors.red,
+        "#505050",
         3
       );
 
@@ -759,9 +812,9 @@ ParticlesHolder.prototype.spawnParticles = function (
 };
 
 Coin = function () {
-  var geom = new THREE.TetrahedronGeometry(5, 0);
+  var geom = new THREE.BoxGeometry(5, 5, 5);
   var mat = new THREE.MeshPhongMaterial({
-    color: 0x009999,
+    color: "#64E986",
     shininess: 0,
     specular: 0xffffff,
 
@@ -966,6 +1019,7 @@ function loop() {
   ennemiesHolder.rotateEnnemies();
 
   sky.moveClouds();
+  sky.moveStars();
   sea.moveWaves();
 
   renderer.render(scene, camera);
